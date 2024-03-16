@@ -1,5 +1,8 @@
+using System.Configuration;
 using MassTransit;
+using Microsoft.EntityFrameworkCore;
 using Quartz;
+using WebApp;
 
 const string SchedulerQueueName = "repro-quartz-scheduler"; 
 var SchedulerQueue = new Uri("queue:" + SchedulerQueueName);
@@ -8,6 +11,10 @@ var connectionString = "Server=(localdb)\\mssqllocaldb;Database=Repro;Trusted_Co
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(connectionString));
+
 
 builder.Services.AddQuartz(q =>
 {
