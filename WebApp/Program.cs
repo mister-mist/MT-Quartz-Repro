@@ -4,16 +4,13 @@ using Microsoft.EntityFrameworkCore;
 using Quartz;
 using WebApp;
 
-const string SchedulerQueueName = "repro-quartz-scheduler"; 
-var SchedulerQueue = new Uri("queue:" + SchedulerQueueName);
-var connectionString = "Server=(localdb)\\mssqllocaldb;Database=Repro;Trusted_Connection=True;";
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseSqlServer(Settings.connectionString));
 
 
 builder.Services.AddQuartz(q =>
@@ -23,7 +20,7 @@ builder.Services.AddQuartz(q =>
     {
         s.UseProperties = true;
 
-        s.UseSqlServer(connectionString);
+        s.UseSqlServer(Settings.connectionString);
 
         s.UseJsonSerializer();
     });
@@ -31,10 +28,11 @@ builder.Services.AddQuartz(q =>
 
 builder.Services.AddMassTransit(x =>
 {
+    x.AddConsumersFromNamespaceContaining<SchedulePipelineConsumer>();
     x.AddPublishMessageScheduler();
-
-    x.AddMessageScheduler(SchedulerQueue);
-    x.AddQuartzConsumers(options => options.QueueName = SchedulerQueueName);
+    var q = new Uri("queue:"+Settings.SchedulerQueueName);
+    x.AddMessageScheduler(q);
+    x.AddQuartzConsumers(options => options.QueueName = Settings.SchedulerQueueName);
 
     x.UsingRabbitMq((context, cfg) =>
     {
@@ -43,7 +41,7 @@ builder.Services.AddMassTransit(x =>
             h.Username("guest");
             h.Password("guest");
         });
-        cfg.UseMessageScheduler(SchedulerQueue);
+        cfg.UseMessageScheduler(q);
 
         cfg.ConfigureEndpoints(context);
     });
@@ -75,3 +73,4 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
